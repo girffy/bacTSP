@@ -71,9 +71,11 @@ void TSP_prob::init_LP(){
   glp_add_cols(lp, n*(n-1)/2);
 
   // add rows/constraints
-  char buffer[50];
+  constexpr auto BUFSZ = 50;
+  char buffer[BUFSZ];
   for(int i=0; i<n; i++){
-    sprintf(buffer, "degcon%d", i);
+    if (auto sz = snprintf(buffer, BUFSZ, "degcon%d", i);
+        sz < 0 || sz >= BUFSZ) { exit (-2); }
     glp_set_row_name(lp, i+1, buffer);
     glp_set_row_bnds(lp, i+1, GLP_FX, 2.0, 2.0);
   }
@@ -82,7 +84,8 @@ void TSP_prob::init_LP(){
   int vidx = 1;
   for(int i=0; i<n; i++){
     for(int j=i+1; j<n; j++){
-      sprintf(buffer, "x%d,%d", i, j);
+      if (auto sz = snprintf(buffer, BUFSZ, "x%d,%d", i, j);
+          sz < 0 || sz >= BUFSZ) { exit (-2); }
       glp_set_col_name(lp, vidx, buffer);
       glp_set_col_bnds(lp, vidx, GLP_DB, 0.0, 1.0);
       glp_set_obj_coef(lp, vidx, d[i][j]);

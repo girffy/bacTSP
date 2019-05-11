@@ -11,10 +11,10 @@
 #include <boost/typeof/typeof.hpp>
 
 using namespace std;
-typedef pair<double, double> point;
-typedef pair<int, int> edge;
-typedef vector<vector<double>> dmtx;
-typedef vector<int> tour;
+using point = pair<double, double>;
+using  edge = pair<int, int>;
+using  dmtx = vector<vector<double>>;
+using  tour = vector<int>;
 
 class TSP_prob {
   public:
@@ -35,8 +35,8 @@ class TSP_prob {
 
   private:
     // a type for the way boost produces a graph cut
-    typedef boost::one_bit_color_map<boost::vec_adj_list_vertex_id_map<boost::no_property, long unsigned int> >
-        parity_map;
+    using parity_map =
+        boost::one_bit_color_map<boost::vec_adj_list_vertex_id_map<boost::no_property, long unsigned int>>;
 
     /* some state variables used during the course of solve() */
     double lb; // the best known lower bound for the problem

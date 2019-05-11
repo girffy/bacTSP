@@ -1,24 +1,25 @@
 #include "TSP_prob.hpp"
 #include <assert.h>
 #include <stdio.h>
+#include <algorithm>
 
 TSP_prob::TSP_prob(dmtx d) : d(d) {
   int n = d.size();
   this->num_nodes = n;
   this->edges = new edge[n*(n-1)/2];
   this->wbuf = new double[n*(n-1)/2];
-  this->init_LP();
   this->ia = new int[1 + n*n];
   this->ja = new int[1 + n*n];
   this->ar = new double[1 + n*n];
+  this->init_LP();
 }
 
 TSP_prob::~TSP_prob(){
-  delete this->edges;
-  delete this->wbuf;
-  delete this->ia;
-  delete this->ja;
-  delete this->ar;
+  delete[] this->edges;
+  delete[] this->wbuf;
+  delete[] this->ia;
+  delete[] this->ja;
+  delete[] this->ar;
   glp_delete_prob(this->lp);
 }
 
@@ -32,7 +33,8 @@ TSP_prob::TSP_prob(const TSP_prob &other){
   this->d = other.d;
   this->wbuf = new double[ne];
   this->edges = new edge[ne];
-  memcpy(this->edges, other.edges, ne * sizeof(edge));
+  // memcpy(this->edges, other.edges, ne * sizeof(edge));
+  std::copy(other.edges, other.edges+ne, this->edges);
 
   this->ia = new int[1 + n*n];
   this->ja = new int[1 + n*n];

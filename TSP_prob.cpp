@@ -159,20 +159,10 @@ int TSP_prob::edge_to_var(edge e){
 // do it the naive way until b2 fixes the tricky way
 int TSP_prob::edge_to_var(int src, int dest){
   assert(src < dest);
-  // int naive = this->num_nodes*src - dest;
-  // return naive - src*(src+1)/2 + 1; // +1 for glpk
-  int idx = 1;
-  for(int i = 0; i < num_nodes; i++) {
-      for(int j = i+1; j < num_nodes; j++) {
-          if(i==src && j==dest) {
-              goto end;
-          } else {
-              idx++;
-          }
-      }
-  }
-end:
-  printf("EDGE (%d, %d) TO VAR %d\n", src, dest, idx);
+  // idx is diff of partial sums + offs
+  auto psum = [](auto n) { return n*(n-1)/2; };
+  int idx = psum(this->num_nodes) - psum(this->num_nodes-src) + (dest-src);
+  // printf("EDGE (%d, %d) TO VAR %d\n", src, dest, idx);
   return idx;
 }
 

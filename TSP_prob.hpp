@@ -18,35 +18,29 @@ using  tour = vector<int>;
 
 class TSP_prob {
   public:
-    int num_nodes;
-    glp_prob *lp;
-    dmtx d;
-    edge *edges;
-    double *wbuf; // a weight buffer used for min cut
-
     TSP_prob(dmtx d);
-    ~TSP_prob();
     TSP_prob(const TSP_prob &other);
     TSP_prob& operator=(TSP_prob&& other);
+    ~TSP_prob();
 
-  // solve the TSP instance; this->lp will have the solution as its primal
-  // variable
-  void solve();
+    // solve the TSP instance; this->lp will have the solution as its primal
+    // variable
+    void solve();
 
   private:
     // a type for the way boost produces a graph cut
     using parity_map =
         boost::one_bit_color_map<boost::vec_adj_list_vertex_id_map<boost::no_property, long unsigned int>>;
 
+    /* Why were these originally public */
+    int num_nodes;
+    dmtx d;
+    glp_prob *lp;
+    edge *edges;
     /* some state variables used during the course of solve() */
     double lb; // the best known lower bound for the problem
     double ub; // the best known upper bound for the problem
     int depth; // the current branching depth
-
-    /* 3 scratch arrays used for interfacing with GLPK */
-    int *ia;
-    int *ja;
-    double *ar;
 
     /* methods for massaging LPs */
     // initialize the lp object of a TSP_prob; also initialize the edges

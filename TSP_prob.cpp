@@ -7,64 +7,50 @@ TSP_prob::TSP_prob(dmtx d) : d(d) {
   int n = d.size();
   this->num_nodes = n;
   this->edges = new edge[n*(n-1)/2];
-  this->wbuf = new double[n*(n-1)/2];
-  this->ia = new int[1 + n*n];
-  this->ja = new int[1 + n*n];
-  this->ar = new double[1 + n*n];
   this->init_LP();
 }
 
 TSP_prob::~TSP_prob(){
   delete[] this->edges;
-  delete[] this->wbuf;
-  delete[] this->ia;
-  delete[] this->ja;
-  delete[] this->ar;
-  glp_delete_prob(this->lp);
+  printf("Deleting %p\n", (void*)this->lp);
+  if(this->lp) {
+      glp_delete_prob(this->lp);
+  }
 }
 
 TSP_prob::TSP_prob(const TSP_prob &other){
   this->lp = glp_create_prob();
+  printf("Creating1 %p\n", (void*)this->lp);
   glp_copy_prob(this->lp, other.lp, GLP_ON);
 
   int n = other.num_nodes;
   int ne = n*(n-1)/2;
+
   this->num_nodes = n;
   this->d = other.d;
-  this->wbuf = new double[ne];
   this->edges = new edge[ne];
-  // memcpy(this->edges, other.edges, ne * sizeof(edge));
   std::copy(other.edges, other.edges+ne, this->edges);
-
-  this->ia = new int[1 + n*n];
-  this->ja = new int[1 + n*n];
-  this->ar = new double[1 + n*n];
 }
 
 TSP_prob& TSP_prob::operator=(TSP_prob&& other){
   this->num_nodes = other.num_nodes;
-  this->lp = other.lp;
   this->d = other.d;
+  this->lp = other.lp;
   this->edges = other.edges;
-  this->wbuf = other.wbuf;
-  this->ia = other.ia;
-  this->ja = other.ja;
-  this->ar = other.ar;
 
   other.lp = NULL;
   other.edges = NULL;
-  other.wbuf = NULL;
-  other.ia = NULL;
-  other.ja = NULL;
-  other.ar = NULL;
 
   return *this;
 }
 
 void TSP_prob::init_LP(){
   int n = this->d.size();
-  glp_prob *lp;
+  auto ia = new int[1 + n*n];
+  auto ja = new int[1 + n*n];
+  auto ar = new double[1 + n*n];
   lp = glp_create_prob();
+  printf("Creating2 %p\n", (void*)lp);
   glp_set_prob_name(lp, "TSP");
   glp_set_obj_dir(lp, GLP_MIN);
   glp_add_rows(lp, n);
@@ -99,20 +85,24 @@ void TSP_prob::init_LP(){
   vidx = 1;
   for(int a=0; a<n; a++){
     for(int b=a+1; b<n; b++){
-      this->ia[aidx] = a+1;
-      this->ja[aidx] = vidx;
-      this->ar[aidx] = 1.0;
+      ia[aidx] = a+1;
+      ja[aidx] = vidx;
+      ar[aidx] = 1.0;
       aidx++;
 
-      this->ia[aidx] = b+1;
-      this->ja[aidx] = vidx;
-      this->ar[aidx] = 1.0;
+      ia[aidx] = b+1;
+      ja[aidx] = vidx;
+      ar[aidx] = 1.0;
       aidx++;
       vidx++;
     }
   }
 
-  glp_load_matrix(lp, aidx-1, this->ia, this->ja, this->ar);
+  glp_load_matrix(lp, aidx-1, ia, ja, ar);
+
+  delete[] ia;
+  delete[] ja;
+  delete[] ar;
 }
 
 void TSP_prob::add_subtour_constraint(parity_map pmap){
@@ -129,8 +119,7 @@ void TSP_prob::add_subtour_constraint(parity_map pmap){
   for(int src = 0; src < n; src++){
     for(int dest = src+1; dest < n; dest++){
       if(get(pmap, src) != get(pmap, dest)){
-        edge e = {src, dest};
-        int idx = edge_to_var(e);
+        int idx = edge_to_var({src,dest});
         ind[eidx] = idx;
         val[eidx] = 1.0;
         eidx++;
@@ -140,8 +129,8 @@ void TSP_prob::add_subtour_constraint(parity_map pmap){
 
   glp_set_mat_row(this->lp, r, eidx-1, ind, val);
 
-  delete ind;
-  delete val;
+  delete[] ind;
+  delete[] val;
 }
 
 void TSP_prob::fix_var(int var, double value){
@@ -166,10 +155,25 @@ int TSP_prob::edge_to_var(edge e){
   return this->edge_to_var(src, dest);
 }
 
+// This function in broken in ways I dont understand how to fix (columns shouldnt be negative idx)
+// do it the naive way until b2 fixes the tricky way
 int TSP_prob::edge_to_var(int src, int dest){
   assert(src < dest);
-  int naive = this->num_nodes*src - dest;
-  return naive - src*(src+1)/2 + 1; // +1 for glpk
+  // int naive = this->num_nodes*src - dest;
+  // return naive - src*(src+1)/2 + 1; // +1 for glpk
+  int idx = 1;
+  for(int i = 0; i < num_nodes; i++) {
+      for(int j = i+1; j < num_nodes; j++) {
+          if(i==src && j==dest) {
+              goto end;
+          } else {
+              idx++;
+          }
+      }
+  }
+end:
+  printf("EDGE (%d, %d) TO VAR %d\n", src, dest, idx);
+  return idx;
 }
 
 edge TSP_prob::var_to_edge(int i){
@@ -261,12 +265,13 @@ bool TSP_prob::cp_solve(){
 
 pair<TSP_prob::parity_map, double> TSP_prob::min_cut(){
   typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::undirectedS,
-    boost::no_property, boost::property<boost::edge_weight_t, int> > undirected_graph;
+    boost::no_property, boost::property<boost::edge_weight_t, int>> undirected_graph;
   typedef boost::graph_traits<undirected_graph>::vertex_descriptor vertex_descriptor;
   typedef boost::property_map<undirected_graph, boost::edge_weight_t>::type weight_map_type;
   typedef boost::property_traits<weight_map_type>::value_type weight_type;
 
   int ne = this->num_nodes*(this->num_nodes-1)/2;
+  /*static*/auto wbuf = new double[ne];
 
   for(int i = 0; i < ne; i++){
     wbuf[i] = glp_get_col_prim(this->lp, i+1);

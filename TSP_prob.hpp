@@ -36,6 +36,8 @@ class TSP_prob {
     // dump the current LP solution
     void dump_LP_soln();
 
+    // dump the current LP solution in matrix form
+    void print_wmat();
 
   private:
     // a type for the way boost produces a graph cut

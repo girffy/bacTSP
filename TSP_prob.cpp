@@ -28,6 +28,9 @@ TSP_prob::TSP_prob(const TSP_prob &other){
 
   this->num_nodes = n;
   this->d = other.d;
+  this->lb = other.lb;
+  this->ub = other.ub;
+  this->depth = other.depth;
   this->edges = new edge[ne];
   std::copy(other.edges, other.edges+ne, this->edges);
 }
@@ -36,6 +39,9 @@ TSP_prob& TSP_prob::operator=(TSP_prob&& other){
   this->num_nodes = other.num_nodes;
   this->d = other.d;
   this->lp = other.lp;
+  this->lb = other.lb;
+  this->ub = other.ub;
+  this->depth = other.depth;
   this->edges = other.edges;
 
   other.lp = NULL;
@@ -120,16 +126,13 @@ void TSP_prob::add_subtour_constraint(parity_map pmap){
   int eidx = 1;
   glp_add_rows(this->lp, 1);
   int r = glp_get_num_rows(this->lp);
-  printf("r is %d\n", r);
   glp_set_row_name(this->lp, r, "subtour");
   glp_set_row_bnds(this->lp, r, GLP_LO, 2.0, 0.0);
 
-  double debug_weight = 0;
   for(int src = 0; src < n; src++){
     for(int dest = src+1; dest < n; dest++){
       if(get(pmap, src) != get(pmap, dest)){
         int idx = edge_to_var({src,dest});
-        debug_weight += glp_get_col_prim(lp, idx);
         ind[eidx] = idx;
         val[eidx] = 1.0;
         eidx++;
@@ -138,37 +141,6 @@ void TSP_prob::add_subtour_constraint(parity_map pmap){
   }
 
   glp_set_mat_row(this->lp, r, eidx-1, ind, val);
-
-  /* big debug block */
-  printf("debug_weight=%f\n", debug_weight);
-  printf("eidx=%d\n", eidx);
-  int rl = glp_get_mat_row(lp, r, ind, val);
-  printf("rl is %d\n", rl);
-  double *row = new double[1+n*n];
-  for(int i = 0; i < 1+n*n; i++) row[i] = 0;
-  for(int i = 1; i <= rl; i++){
-    row[ind[i]] = val[i];
-  }
-  /*
-  printf("new row is:\n");
-  for(int i = 1; i <= glp_get_num_cols(lp); i++){
-    auto [src, dest] = var_to_edge(i);
-    //printf("%.2f ", row[i]);
-    //printf("%d ", (int)row[i]);
-    printf("%d,%d: %.2f\n", src, dest, row[i]);
-  }
-  printf("\n\n");
-  */
-  /*
-  printf("current soln:\n");
-  dump_LP_soln();
-  printf("@@@@@@@@@@@@@@@@@@@@\n");
-  printf("2nd last row primal: %f\n", glp_get_row_dual(lp, glp_get_num_rows(lp)-2));
-  printf("2nd last row dual: %f\n", glp_get_row_dual(lp, glp_get_num_rows(lp)-2));
-  printf("@@@@@@@@@@@@@@@@@@@@\n");
-  */
-
-  delete[] row;
 
   delete[] ind;
   delete[] val;
@@ -224,11 +196,15 @@ void TSP_prob::solve(){
 }
 
 bool TSP_prob::recsolve(){
-  glp_prob *lp = this->lp;
+  printf("@@ recsolve: depth=%d\n", depth);
   int n = this->num_nodes;
   bool feas = this->cp_solve();
   double obj_val = glp_get_obj_val(lp);
-  if(!feas || glp_get_obj_val(lp) > ub || this->lb > ub-EPS){
+  if(!feas || glp_get_obj_val(lp) > ub || lb > ub-EPS){
+    if(!feas) printf("fail: cp_solve could not find feas\n");
+    if(glp_get_obj_val(lp) > ub) printf("fail: tour length too high (%f>%f)\n",
+                                        glp_get_obj_val(lp), ub);
+    if(lb > ub-EPS) printf("fail: bound range is empty [%f, %f]\n", lb, ub);
     return false;
   }
   this->lb = max(this->lb, obj_val);
@@ -244,7 +220,11 @@ bool TSP_prob::recsolve(){
       record = abs(0.5-x);
     }
   }
-  if(branch_var == -1) return lp;
+  if(branch_var == -1){
+    printf("found integer soln; ov=%.2f\n", glp_get_obj_val(lp));
+    return true;
+  }
+  auto [src, dest] = var_to_edge(branch_var);
 
   // now, branch on branch_var
   // TODO: could be slightly more efficient by using the current TSP_prob for
@@ -254,6 +234,7 @@ bool TSP_prob::recsolve(){
   TSP_prob tp0(*this); // TODO: figure out this constructor bs
   tp0.depth++;
   tp0.fix_var(branch_var, 0.0);
+  printf("branching on x%d,%d = 0\n", src, dest);
   bool feas0 = tp0.recsolve();
   double objval0 = glp_get_obj_val(tp0.lp) ? feas0 : INF;
   if(feas0) this->ub = min(this->ub, tp0.ub);
@@ -262,14 +243,20 @@ bool TSP_prob::recsolve(){
   TSP_prob tp1(*this); // TODO: figure out this constructor bs
   tp1.depth++;
   tp1.fix_var(branch_var, 1.0);
+  printf("branching on x%d,%d = 1\n", src, dest);
   bool feas1 = tp1.recsolve();
   double objval1 = glp_get_obj_val(tp1.lp) ? feas1 : INF;
 
+  printf("objvals are %f, %f\n", objval0, objval1);
+
   if(objval0 < objval1){
+    printf("choosing branch x%d,%d = 0\n", src, dest);
     *this = std::move(tp0);
   }else if(feas1){
+    printf("choosing branch x%d,%d = 1\n", src, dest);
     *this = std::move(tp1);
   }else{
+    printf("both branches failed\n");
     return false;
   }
 
@@ -278,14 +265,11 @@ bool TSP_prob::recsolve(){
 
 bool TSP_prob::cp_solve(){
   // solve and add subtour inequalities until none are violated
-  int debug = 0;
+  printf("cp_solve enter\n");
   while(true){
-    printf("Running simplex\n");
-    printf("Num rows: %d\n", glp_get_num_rows(this->lp));
-    printf("Num cols: %d\n", glp_get_num_cols(this->lp));
     glp_smcp parm;
     glp_init_smcp(&parm);
-    //parm.msg_lev = GLP_MSG_OFF;
+    parm.msg_lev = GLP_MSG_OFF;
     assert(glp_simplex(this->lp, &parm) == 0);
     int status = glp_get_status(this->lp);
     if(status != GLP_OPT){
@@ -294,37 +278,56 @@ bool TSP_prob::cp_solve(){
       return false;
     }
 
-    if(debug >= 20){
-      glp_print_sol(lp, "sol.txt");
-      assert(false);
-    }
-
     auto [pmap, weight] = this->min_cut();
-    printf("weight is %f\n", weight);
     if(weight >= 2-EPS) break;
     this->add_subtour_constraint(pmap);
-    debug++;
   }
 
   // TODO: look for more cutting planes, e.g. comb inequalities
 
+  printf("cp_solve: found soln with ov=%f\n", glp_get_obj_val(lp));
   return true;
 }
 
 
+// debug function; print out the current weights in matrix form
+void TSP_prob::print_wmat(){
+  printf("    ");
+  for(int k = 0; k < num_nodes; k++) printf("%-4d", k);
+  printf("\n");
+  for(int i = 0; i < num_nodes; i++){
+    printf("%-4d", i);
+    for(int j = 0; j < num_nodes; j++){
+      if(i == j){
+        printf("___ ");
+      }else{
+        edge e = {min(i,j), max(i,j)};
+        double x = glp_get_col_prim(lp, edge_to_var(e));
+        if(x != 0){
+          printf("%.1f ", x);
+        }else{
+          printf("    ");
+        }
+      }
+    }
+    printf("\n");
+  }
+}
+
 pair<TSP_prob::parity_map, double> TSP_prob::min_cut(){
   typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::undirectedS,
-    boost::no_property, boost::property<boost::edge_weight_t, int>> undirected_graph;
+    boost::no_property, boost::property<boost::edge_weight_t, double>> undirected_graph;
   typedef boost::graph_traits<undirected_graph>::vertex_descriptor vertex_descriptor;
   typedef boost::property_map<undirected_graph, boost::edge_weight_t>::type weight_map_type;
   typedef boost::property_traits<weight_map_type>::value_type weight_type;
 
   int ne = this->num_nodes*(this->num_nodes-1)/2;
-  auto wbuf = new double[ne]; // TODO: put this back to being a class variable
+  double *wbuf = new double[ne]; // TODO: put this back to being a class variable
 
   for(int i = 0; i < ne; i++){
     wbuf[i] = glp_get_col_prim(this->lp, i+1);
   }
+
 
   undirected_graph g(edges, edges + ne, wbuf, this->num_nodes, ne);
   BOOST_AUTO(parities, boost::make_one_bit_color_map(num_vertices(g), get(boost::vertex_index, g)));

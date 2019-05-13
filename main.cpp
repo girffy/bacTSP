@@ -52,5 +52,6 @@ int main (int argc, char *argv[]){
     printf("%d\t(%f,%f)\n", t[i], points[t[i]].first, points[t[i]].second);
   }
 
-  tp.dump_LP_soln();
+  //tp.dump_LP_soln();
+  tp.print_wmat();
 }

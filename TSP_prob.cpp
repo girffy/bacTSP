@@ -320,7 +320,7 @@ pair<TSP_prob::parity_map, double> TSP_prob::min_cut(){
   typedef boost::property_traits<weight_map_type>::value_type weight_type;
 
   int ne = this->num_nodes*(this->num_nodes-1)/2;
-  /*static*/auto wbuf = new double[ne];
+  auto wbuf = new double[ne]; // TODO: put this back to being a class variable
 
   for(int i = 0; i < ne; i++){
     wbuf[i] = glp_get_col_prim(this->lp, i+1);
@@ -329,6 +329,8 @@ pair<TSP_prob::parity_map, double> TSP_prob::min_cut(){
   undirected_graph g(edges, edges + ne, wbuf, this->num_nodes, ne);
   BOOST_AUTO(parities, boost::make_one_bit_color_map(num_vertices(g), get(boost::vertex_index, g)));
   double w = boost::stoer_wagner_min_cut(g, get(boost::edge_weight, g), boost::parity_map(parities));
+
+  delete[] wbuf;
 
   return {parities, w};
 }

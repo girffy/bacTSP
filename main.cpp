@@ -45,13 +45,10 @@ int main (int argc, char *argv[]){
   dmtx d = make_dmtx(points);
   TSP_prob tp(d);
   tp.solve();
-  //printf("%f\n", points[0].first);
+  tp.print_wmat();
   tour t = tp.get_tour();
   printf("Optimal tour:\n\n");
   for(int i = 0; i < (int)t.size(); i++){
     printf("%d\t(%f,%f)\n", t[i], points[t[i]].first, points[t[i]].second);
   }
-
-  //tp.dump_LP_soln();
-  tp.print_wmat();
 }

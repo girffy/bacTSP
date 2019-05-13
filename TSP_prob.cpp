@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <algorithm>
 
+#define logf printf("%*c", depth*2, ' '); printf
+
 TSP_prob::TSP_prob(dmtx d) : d(d) {
   int n = d.size();
   this->num_nodes = n;
@@ -113,7 +115,7 @@ void TSP_prob::init_LP(){
 }
 
 void TSP_prob::add_subtour_constraint(parity_map pmap){
-  printf("Adding subtour constraint:");
+  logf("Adding subtour constraint:");
   for(int i = 0; i < num_nodes; i++){
     if(get(pmap, i)) printf(" %d", i);
   }
@@ -196,15 +198,18 @@ void TSP_prob::solve(){
 }
 
 bool TSP_prob::recsolve(){
-  printf("@@ recsolve: depth=%d\n", depth);
+  logf("recsolve: depth=%d, range=[%.3f,%.3f]\n", depth, lb, ub);
   int n = this->num_nodes;
   bool feas = this->cp_solve();
   double obj_val = glp_get_obj_val(lp);
   if(!feas || glp_get_obj_val(lp) > ub || lb > ub-EPS){
-    if(!feas) printf("fail: cp_solve could not find feas\n");
-    if(glp_get_obj_val(lp) > ub) printf("fail: tour length too high (%f>%f)\n",
-                                        glp_get_obj_val(lp), ub);
-    if(lb > ub-EPS) printf("fail: bound range is empty [%f, %f]\n", lb, ub);
+    if(!feas){
+      logf("fail: cp_solve could not find feas\n");
+    }else if(glp_get_obj_val(lp) > ub){
+      logf("fail: tour length too high (%f>%f)\n", glp_get_obj_val(lp), ub);
+    }else if(lb > ub-EPS){
+      logf("fail: bound range is empty [%f, %f]\n", lb, ub);
+    }
     return false;
   }
   this->lb = max(this->lb, obj_val);
@@ -221,7 +226,8 @@ bool TSP_prob::recsolve(){
     }
   }
   if(branch_var == -1){
-    printf("found integer soln; ov=%.2f\n", glp_get_obj_val(lp));
+    ub = glp_get_obj_val(lp);
+    logf("found integer soln; ov=%.2f\n", glp_get_obj_val(lp));
     return true;
   }
   auto [src, dest] = var_to_edge(branch_var);
@@ -234,29 +240,33 @@ bool TSP_prob::recsolve(){
   TSP_prob tp0(*this); // TODO: figure out this constructor bs
   tp0.depth++;
   tp0.fix_var(branch_var, 0.0);
-  printf("branching on x%d,%d = 0\n", src, dest);
+  logf("branching on x%d,%d = 0\n", src, dest);
   bool feas0 = tp0.recsolve();
-  double objval0 = glp_get_obj_val(tp0.lp) ? feas0 : INF;
-  if(feas0) this->ub = min(this->ub, tp0.ub);
+  double objval0 = feas0 ? glp_get_obj_val(tp0.lp) : INF;
+  if(feas0){
+    logf("ub: %.3f -> ", ub);
+    this->ub = min(this->ub, tp0.ub);
+    printf("%.3f\n", ub);
+  }
 
   // x=1 branch
   TSP_prob tp1(*this); // TODO: figure out this constructor bs
   tp1.depth++;
   tp1.fix_var(branch_var, 1.0);
-  printf("branching on x%d,%d = 1\n", src, dest);
+  logf("branching on x%d,%d = 1\n", src, dest);
   bool feas1 = tp1.recsolve();
-  double objval1 = glp_get_obj_val(tp1.lp) ? feas1 : INF;
+  double objval1 = feas1 ? glp_get_obj_val(tp1.lp) : INF;
 
-  printf("objvals are %f, %f\n", objval0, objval1);
+  logf("objvals are %f, %f\n", objval0, objval1);
 
   if(objval0 < objval1){
-    printf("choosing branch x%d,%d = 0\n", src, dest);
+    logf("choosing branch x%d,%d = 0\n", src, dest);
     *this = std::move(tp0);
   }else if(feas1){
-    printf("choosing branch x%d,%d = 1\n", src, dest);
+    logf("choosing branch x%d,%d = 1\n", src, dest);
     *this = std::move(tp1);
   }else{
-    printf("both branches failed\n");
+    logf("both branches failed\n");
     return false;
   }
 
@@ -265,7 +275,7 @@ bool TSP_prob::recsolve(){
 
 bool TSP_prob::cp_solve(){
   // solve and add subtour inequalities until none are violated
-  printf("cp_solve enter\n");
+  logf("cp_solve enter\n");
   while(true){
     glp_smcp parm;
     glp_init_smcp(&parm);
@@ -274,7 +284,7 @@ bool TSP_prob::cp_solve(){
     int status = glp_get_status(this->lp);
     if(status != GLP_OPT){
       assert(status == GLP_NOFEAS);
-      printf("NOFEAS\n");
+      logf("NOFEAS\n");
       return false;
     }
 
@@ -285,7 +295,7 @@ bool TSP_prob::cp_solve(){
 
   // TODO: look for more cutting planes, e.g. comb inequalities
 
-  printf("cp_solve: found soln with ov=%f\n", glp_get_obj_val(lp));
+  logf("cp_solve: found soln with ov=%f\n", glp_get_obj_val(lp));
   return true;
 }
 

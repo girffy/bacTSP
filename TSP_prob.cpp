@@ -238,26 +238,26 @@ bool TSP_prob::recsolve(){
   // TODO: could be slightly more efficient by using the current TSP_prob for
   // one of the branches, instead of making two new copies
 
-  // x=0 branch (TODO: should we start with x=1 branch?)
-  TSP_prob tp0(*this); // TODO: figure out this constructor bs
-  tp0.depth++;
-  tp0.fix_var(branch_var, 0.0);
-  logf("branching on x%d,%d = 0\n", src, dest);
-  bool feas0 = tp0.recsolve();
-  double objval0 = feas0 ? glp_get_obj_val(tp0.lp) : INF;
-  if(feas0){
-    logf("ub: %.3f -> ", ub);
-    this->ub = min(this->ub, tp0.ub);
-    printf("%.3f\n", ub);
-  }
-
   // x=1 branch
-  TSP_prob tp1(*this); // TODO: figure out this constructor bs
+  TSP_prob tp1(*this);
   tp1.depth++;
   tp1.fix_var(branch_var, 1.0);
   logf("branching on x%d,%d = 1\n", src, dest);
   bool feas1 = tp1.recsolve();
   double objval1 = feas1 ? glp_get_obj_val(tp1.lp) : INF;
+  if(feas1){
+    logf("ub: %.3f -> ", ub);
+    this->ub = min(this->ub, tp1.ub);
+    printf("%.3f\n", ub);
+  }
+
+  // x=0 branch
+  TSP_prob tp0(*this);
+  tp0.depth++;
+  tp0.fix_var(branch_var, 0.0);
+  logf("branching on x%d,%d = 0\n", src, dest);
+  bool feas0 = tp0.recsolve();
+  double objval0 = feas0 ? glp_get_obj_val(tp0.lp) : INF;
 
   logf("objvals are %f, %f\n", objval0, objval1);
 

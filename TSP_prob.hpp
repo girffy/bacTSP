@@ -27,6 +27,16 @@ class TSP_prob {
     // variable
     void solve();
 
+    // get the current solution as a tour (list of nodes). Should only be run
+    // after solve()
+    tour get_tour();
+
+
+    /* debugging stuff */
+    // dump the current LP solution
+    void dump_LP_soln();
+
+
   private:
     // a type for the way boost produces a graph cut
     using parity_map =

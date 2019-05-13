@@ -12,7 +12,7 @@ TSP_prob::TSP_prob(dmtx d) : d(d) {
 
 TSP_prob::~TSP_prob(){
   delete[] this->edges;
-  printf("Deleting %p\n", (void*)this->lp);
+  //printf("Deleting %p\n", (void*)this->lp);
   if(this->lp) {
       glp_delete_prob(this->lp);
   }
@@ -20,7 +20,7 @@ TSP_prob::~TSP_prob(){
 
 TSP_prob::TSP_prob(const TSP_prob &other){
   this->lp = glp_create_prob();
-  printf("Creating1 %p\n", (void*)this->lp);
+  //printf("Creating1 %p\n", (void*)this->lp);
   glp_copy_prob(this->lp, other.lp, GLP_ON);
 
   int n = other.num_nodes;
@@ -50,7 +50,7 @@ void TSP_prob::init_LP(){
   auto ja = new int[1 + n*n];
   auto ar = new double[1 + n*n];
   lp = glp_create_prob();
-  printf("Creating2 %p\n", (void*)lp);
+  //printf("Creating2 %p\n", (void*)lp);
   glp_set_prob_name(lp, "TSP");
   glp_set_obj_dir(lp, GLP_MIN);
   glp_add_rows(lp, n);
@@ -99,6 +99,7 @@ void TSP_prob::init_LP(){
   }
 
   glp_load_matrix(lp, aidx-1, ia, ja, ar);
+  this->lp = lp;
 
   delete[] ia;
   delete[] ja;
@@ -106,20 +107,29 @@ void TSP_prob::init_LP(){
 }
 
 void TSP_prob::add_subtour_constraint(parity_map pmap){
+  printf("Adding subtour constraint:");
+  for(int i = 0; i < num_nodes; i++){
+    if(get(pmap, i)) printf(" %d", i);
+  }
+  printf("\n");
+
   int n = this->num_nodes;
   // TODO: make ind and val scratch variables in TSP_prob
-  int *ind = new int[1 + n];
-  double *val = new double[1 + n];
+  int *ind = new int[1 + n*n];
+  double *val = new double[1 + n*n];
   int eidx = 1;
   glp_add_rows(this->lp, 1);
   int r = glp_get_num_rows(this->lp);
+  printf("r is %d\n", r);
   glp_set_row_name(this->lp, r, "subtour");
   glp_set_row_bnds(this->lp, r, GLP_LO, 2.0, 0.0);
 
+  double debug_weight = 0;
   for(int src = 0; src < n; src++){
     for(int dest = src+1; dest < n; dest++){
       if(get(pmap, src) != get(pmap, dest)){
         int idx = edge_to_var({src,dest});
+        debug_weight += glp_get_col_prim(lp, idx);
         ind[eidx] = idx;
         val[eidx] = 1.0;
         eidx++;
@@ -128,6 +138,37 @@ void TSP_prob::add_subtour_constraint(parity_map pmap){
   }
 
   glp_set_mat_row(this->lp, r, eidx-1, ind, val);
+
+  /* big debug block */
+  printf("debug_weight=%f\n", debug_weight);
+  printf("eidx=%d\n", eidx);
+  int rl = glp_get_mat_row(lp, r, ind, val);
+  printf("rl is %d\n", rl);
+  double *row = new double[1+n*n];
+  for(int i = 0; i < 1+n*n; i++) row[i] = 0;
+  for(int i = 1; i <= rl; i++){
+    row[ind[i]] = val[i];
+  }
+  /*
+  printf("new row is:\n");
+  for(int i = 1; i <= glp_get_num_cols(lp); i++){
+    auto [src, dest] = var_to_edge(i);
+    //printf("%.2f ", row[i]);
+    //printf("%d ", (int)row[i]);
+    printf("%d,%d: %.2f\n", src, dest, row[i]);
+  }
+  printf("\n\n");
+  */
+  /*
+  printf("current soln:\n");
+  dump_LP_soln();
+  printf("@@@@@@@@@@@@@@@@@@@@\n");
+  printf("2nd last row primal: %f\n", glp_get_row_dual(lp, glp_get_num_rows(lp)-2));
+  printf("2nd last row dual: %f\n", glp_get_row_dual(lp, glp_get_num_rows(lp)-2));
+  printf("@@@@@@@@@@@@@@@@@@@@\n");
+  */
+
+  delete[] row;
 
   delete[] ind;
   delete[] val;
@@ -237,14 +278,32 @@ bool TSP_prob::recsolve(){
 
 bool TSP_prob::cp_solve(){
   // solve and add subtour inequalities until none are violated
+  int debug = 0;
   while(true){
-    assert(glp_simplex(this->lp, NULL) == 0);
-    int status = glp_get_prim_stat(this->lp);
-    if(status == GLP_INFEAS) return false;
+    printf("Running simplex\n");
+    printf("Num rows: %d\n", glp_get_num_rows(this->lp));
+    printf("Num cols: %d\n", glp_get_num_cols(this->lp));
+    glp_smcp parm;
+    glp_init_smcp(&parm);
+    //parm.msg_lev = GLP_MSG_OFF;
+    assert(glp_simplex(this->lp, &parm) == 0);
+    int status = glp_get_status(this->lp);
+    if(status != GLP_OPT){
+      assert(status == GLP_NOFEAS);
+      printf("NOFEAS\n");
+      return false;
+    }
+
+    if(debug >= 20){
+      glp_print_sol(lp, "sol.txt");
+      assert(false);
+    }
 
     auto [pmap, weight] = this->min_cut();
+    printf("weight is %f\n", weight);
     if(weight >= 2-EPS) break;
     this->add_subtour_constraint(pmap);
+    debug++;
   }
 
   // TODO: look for more cutting planes, e.g. comb inequalities
@@ -272,4 +331,37 @@ pair<TSP_prob::parity_map, double> TSP_prob::min_cut(){
   double w = boost::stoer_wagner_min_cut(g, get(boost::edge_weight, g), boost::parity_map(parities));
 
   return {parities, w};
+}
+
+// could be made faster, but not exactly perf critical anyway
+tour TSP_prob::get_tour(){
+  assert(num_nodes > 2);
+  tour t = {0};
+
+  for(int i = 0; i < num_nodes-1; i++){
+    for(int j = 0; j < num_nodes; j++){
+      int cur = t[t.size()-1];
+      if(cur == j) continue;
+      edge e = {min(cur,j), max(cur,j)};
+      int idx = edge_to_var(e);
+      double x = glp_get_col_prim(lp, idx);
+      assert(x < EPS || x > 1-EPS);
+      if(x > 1-EPS && (t.size() == 1 || t[t.size()-2] != j)){
+        t.push_back(j);
+        break;
+      }
+    }
+  }
+
+  assert(t.size() == (unsigned int)num_nodes);
+
+  return t;
+}
+
+void TSP_prob::dump_LP_soln(){
+  printf("LP dump:\n");
+  for(int eidx = 1; eidx <= glp_get_num_cols(lp); eidx++){
+    edge e = var_to_edge(eidx);
+    printf("\tx%d,%d = %f\n", e.first, e.second, glp_get_col_prim(lp, eidx));
+  }
 }

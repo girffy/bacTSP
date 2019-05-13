@@ -116,8 +116,10 @@ void TSP_prob::init_LP(){
 
 void TSP_prob::add_subtour_constraint(parity_map pmap){
   logf("Adding subtour constraint:");
-  for(int i = 0; i < num_nodes; i++){
-    if(get(pmap, i)) printf(" %d", i);
+  if(num_nodes < 50){
+    for(int i = 0; i < num_nodes; i++){
+      if(get(pmap, i)) printf(" %d", i);
+    }
   }
   printf("\n");
 

@@ -56,14 +56,12 @@ vector<point> random_points(int n){
 
 int main (int argc, char *argv[]){
   int n;
-  bool fromfile = false;
   vector<point> points;
   dmtx d;
   if(argc <= 1){
     printf("Usage: %s <num_cities> | %s file <dmtx>\n", argv[0], argv[0]);
   }else if(strcmp(argv[1], "file") == 0){
     assert(argc == 3);
-    fromfile = true;
     d = read_dmtx(argv[2]);
   }else{
     assert(argc == 2);
@@ -79,7 +77,7 @@ int main (int argc, char *argv[]){
   tour t = tp.get_tour();
   printf("Optimal tour:\n\n");
   for(int i = 0; i < (int)t.size(); i++){
-    if(fromfile){
+    if(points.size() == 0){
       printf("%d\n", t[i]);
     }else{
       printf("%d\t(%f,%f)\n", t[i], points[t[i]].first, points[t[i]].second);

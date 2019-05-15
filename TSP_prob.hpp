@@ -60,7 +60,7 @@ class TSP_prob {
     void init_LP();
 
     // add a subtour constraint for the given cut to the TSP LP
-    void add_subtour_constraint(parity_map pmap);
+    void add_subtour_constraint(vector<bool> cut);
 
     // add a constraint forcing the given variable to have a specific value
     void fix_var(int var, double value);
@@ -91,5 +91,5 @@ class TSP_prob {
     // extract a weighted undirected graph from current solution, and find a
     // minimum-weight cut for it. Return a parity map, mapping vertices to
     // true/false according to their side of the cut, and the weight of the cut
-    pair<parity_map, double> min_cut();
+    pair<vector<bool>, double> min_cut();
 };

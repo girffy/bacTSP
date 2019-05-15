@@ -114,11 +114,11 @@ void TSP_prob::init_LP(){
   delete[] ar;
 }
 
-void TSP_prob::add_subtour_constraint(parity_map pmap){
+void TSP_prob::add_subtour_constraint(vector<bool> cut){
   logf("Adding subtour constraint:");
   if(num_nodes < 50){
     for(int i = 0; i < num_nodes; i++){
-      if(get(pmap, i)) printf(" %d", i);
+      if(cut[i]) printf(" %d", i);
     }
   }
   printf("\n");
@@ -135,7 +135,7 @@ void TSP_prob::add_subtour_constraint(parity_map pmap){
 
   for(int src = 0; src < n; src++){
     for(int dest = src+1; dest < n; dest++){
-      if(get(pmap, src) != get(pmap, dest)){
+      if(cut[src] != cut[dest]){
         int idx = edge_to_var({src,dest});
         ind[eidx] = idx;
         val[eidx] = 1.0;
@@ -290,9 +290,9 @@ bool TSP_prob::cp_solve(){
       return false;
     }
 
-    auto [pmap, weight] = this->min_cut();
+    auto [cut, weight] = this->min_cut();
     if(weight >= 2-EPS) break;
-    this->add_subtour_constraint(pmap);
+    this->add_subtour_constraint(cut);
   }
 
   // TODO: look for more cutting planes, e.g. comb inequalities
@@ -326,7 +326,7 @@ void TSP_prob::print_wmat(){
   }
 }
 
-pair<TSP_prob::parity_map, double> TSP_prob::min_cut(){
+pair<vector<bool>, double> TSP_prob::min_cut(){
   typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::undirectedS,
     boost::no_property, boost::property<boost::edge_weight_t, double>> undirected_graph;
   typedef boost::graph_traits<undirected_graph>::vertex_descriptor vertex_descriptor;
@@ -347,7 +347,12 @@ pair<TSP_prob::parity_map, double> TSP_prob::min_cut(){
 
   delete[] wbuf;
 
-  return {parities, w};
+  vector<bool> v(num_nodes);
+  for(int i = 0; i < num_nodes; i++){
+    v[i] = get(parities, i);
+  }
+
+  return {v, w};
 }
 
 // could be made faster, but not exactly perf critical anyway

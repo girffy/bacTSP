@@ -18,6 +18,8 @@ using  tour = vector<int>;
 
 class TSP_prob {
   public:
+    glp_prob *lp;
+
     TSP_prob(dmtx d);
     TSP_prob(const TSP_prob &other);
     TSP_prob& operator=(TSP_prob&& other);
@@ -44,11 +46,10 @@ class TSP_prob {
     using parity_map =
         boost::one_bit_color_map<boost::vec_adj_list_vertex_id_map<boost::no_property, long unsigned int>>;
 
-    /* Why were these originally public */
     int num_nodes;
     dmtx d;
-    glp_prob *lp;
     edge *edges;
+
     /* some state variables used during the course of solve() */
     double lb; // the best known lower bound for the problem
     double ub; // the best known upper bound for the problem

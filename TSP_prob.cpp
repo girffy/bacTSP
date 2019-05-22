@@ -339,6 +339,7 @@ void TSP_prob::print_wmat(){
   }
 }
 
+#ifdef BOOSTCUT
 pair<vector<bool>, double> TSP_prob::min_cut(){
   typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::undirectedS,
     boost::no_property, boost::property<boost::edge_weight_t, double>> undirected_graph;
@@ -367,6 +368,7 @@ pair<vector<bool>, double> TSP_prob::min_cut(){
 
   return {v, w};
 }
+#endif
 
 // could be made faster, but not exactly perf critical anyway
 tour TSP_prob::get_tour(){

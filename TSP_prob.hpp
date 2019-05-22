@@ -4,13 +4,18 @@
 #include <utility>
 #include <cstdlib>
 #include <glpk.h>
+#include <cassert>
+#include <cstring>
+#include <cmath>
 
+#ifdef BOOSTCUT
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/graph_traits.hpp>
 #include <boost/graph/one_bit_color_map.hpp>
 #include <boost/graph/stoer_wagner_min_cut.hpp>
 #include <boost/property_map/property_map.hpp>
 #include <boost/typeof/typeof.hpp>
+#endif
 
 using namespace std;
 using point = pair<double, double>;
@@ -51,9 +56,11 @@ class TSP_prob {
     void print_wmat();
 
   private:
+#ifdef BOOSTCUT
     // a type for the way boost produces a graph cut
     using parity_map =
         boost::one_bit_color_map<boost::vec_adj_list_vertex_id_map<boost::no_property, long unsigned int>>;
+#endif
 
     int num_nodes;
     dmtx d;

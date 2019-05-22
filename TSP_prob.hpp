@@ -1,3 +1,5 @@
+#ifndef TSP_PROB_HPP
+#define TSP_PROB_HPP
 #include <vector>
 #include <utility>
 #include <cstdlib>
@@ -33,6 +35,13 @@ class TSP_prob {
     // after solve()
     tour get_tour();
 
+    // given an edge (src,dest), determines the index of its column in the LP
+    int edge_to_var(edge e);
+    int edge_to_var(int src, int dest);
+
+    // given a LP column index i, determines the edge it corresponds to
+    edge var_to_edge(int i);
+
 
     /* debugging stuff */
     // dump the current LP solution
@@ -65,12 +74,6 @@ class TSP_prob {
     // add a constraint forcing the given variable to have a specific value
     void fix_var(int var, double value);
 
-    // given an edge (src,dest), determines the index of its column in the LP
-    int edge_to_var(edge e);
-    int edge_to_var(int src, int dest);
-
-    // given a LP column index i, determines the edge it corresponds to
-    edge var_to_edge(int i);
 
 
 
@@ -92,4 +95,9 @@ class TSP_prob {
     // minimum-weight cut for it. Return a parity map, mapping vertices to
     // true/false according to their side of the cut, and the weight of the cut
     pair<vector<bool>, double> min_cut();
+
+    pair<vector<bool>, double> sw_wrapper();
+    pair<vector<int>, double> stoer_wagner(vector<vector<pair<int, double>>> al);
 };
+
+#endif

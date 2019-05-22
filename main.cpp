@@ -60,6 +60,7 @@ int main (int argc, char *argv[]){
   dmtx d;
   if(argc <= 1){
     printf("Usage: %s <num_cities> | %s file <dmtx>\n", argv[0], argv[0]);
+    exit(1);
   }else if(strcmp(argv[1], "file") == 0){
     assert(argc == 3);
     d = read_dmtx(argv[2]);

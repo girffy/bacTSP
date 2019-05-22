@@ -1,4 +1,6 @@
 #include "TSP_prob.hpp"
+#include "Graph.hpp"
+
 #include <assert.h>
 #include <stdio.h>
 #include <algorithm>
@@ -290,9 +292,14 @@ bool TSP_prob::cp_solve(){
       return false;
     }
 
-    auto [cut, weight] = this->min_cut();
+    //auto [cut, weight] = this->min_cut();
+    Graph G(num_nodes, *this);
+    //auto [cut, weight] = G.min_cut(2.0 - EPS);
+    auto [cut, weight] = G.min_cut(0);
+    printf("weight is %.2f\n", weight);
     if(weight >= 2-EPS) break;
     this->add_subtour_constraint(cut);
+    print_wmat();
   }
 
   // TODO: look for more cutting planes, e.g. comb inequalities

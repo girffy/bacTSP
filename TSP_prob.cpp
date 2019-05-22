@@ -295,10 +295,13 @@ bool TSP_prob::cp_solve(){
       return false;
     }
 
-    //auto [cut, weight] = this->min_cut();
+#ifdef BOOSTCUT
+    auto [cut, weight] = this->min_cut();
+#else
     Graph G(num_nodes, *this);
     //auto [cut, weight] = G.min_cut(2.0 - EPS);
     auto [cut, weight] = G.min_cut(0);
+#endif
     printf("weight is %.2f\n", weight);
     if(weight >= 2-EPS) break;
     this->add_subtour_constraint(cut);

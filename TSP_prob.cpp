@@ -257,7 +257,7 @@ bool TSP_prob::recsolve(){
   }
 
   // x=0 branch
-  TSP_prob tp0(*this);
+  auto& tp0 = *this;
   tp0.depth++;
   tp0.fix_var(branch_var, 0.0);
   logf("branching on x%d,%d = 0\n", src, dest);
@@ -268,7 +268,7 @@ bool TSP_prob::recsolve(){
 
   if(objval0 < objval1){
     logf("choosing branch x%d,%d = 0\n", src, dest);
-    *this = std::move(tp0);
+    //*this = std::move(tp0);
   }else if(feas1){
     logf("choosing branch x%d,%d = 1\n", src, dest);
     *this = std::move(tp1);

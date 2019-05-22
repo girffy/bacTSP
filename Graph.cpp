@@ -3,6 +3,10 @@
 #include <vector>
 #include <iostream>
 
+#ifndef DEBUG
+#define printf(...) (void)0
+#endif
+
 const double INF = numeric_limits<double>::infinity();
 double EPS = 1e-10;
 

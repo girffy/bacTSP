@@ -5,6 +5,9 @@
 #include <stdio.h>
 #include <algorithm>
 
+#ifndef DEBUG
+#define printf(...) (void)0
+#endif
 #define logf printf("%*c", depth*2, ' '); printf
 
 TSP_prob::TSP_prob(dmtx d) : d(d) {

@@ -5,7 +5,7 @@ debug:
 	g++ -DDEBUG ${CFLAGS} Graph.cpp TSP_prob.cpp main.cpp -lglpk -std=c++1z -g -O3 #-pg -no-pie
 
 release:
-	g++ ${CFLAGS} Graph.cpp TSP_prob.cpp main.cpp -lglpk -std=c++1z -g -O3 #-pg -no-pie
+	g++ ${CFLAGS} Graph.cpp TSP_prob.cpp main.cpp -lglpk -std=c++1z -g -O3 -march=native #-pg -no-pie
 
 clean:
 	rm a.out

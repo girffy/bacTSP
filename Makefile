@@ -22,4 +22,4 @@ runbench:
 	for i in release_b* ; do echo $$i ; time ./$$i 50 >/dev/null ; echo ; done
 
 cleanbench:
-	rm elease_b2cut release_boostcut
+	rm release_b2cut release_boostcut

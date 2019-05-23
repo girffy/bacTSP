@@ -3,12 +3,68 @@
 
 #include <assert.h>
 #include <stdio.h>
+#include <iostream>
 #include <algorithm>
+#include <fstream>
+#include <sstream>
+#include <map>
+#include <regex>
 
 #ifndef DEBUG
 #define printf(...) (void)0
 #endif
 #define logf printf("%*c", depth*2, ' '); printf
+
+TSP_prob::TSP_prob(string filename) {
+  ifstream infile(filename);
+  assert(!infile.fail());
+  string line;
+  regex prop_regex("^([^\\s:]+)\\s*:\\s+(.*)$");
+  map<string, string> props;
+
+  // read metadata
+  while(getline(infile, line)){
+    smatch match;
+    bool matched = regex_match(line, match, prop_regex);
+    if(!matched) break;
+
+    props.insert({match[1], match[2]});
+    infile.clear();
+  }
+
+  num_nodes = stoi(props["DIMENSION"]);
+  edges = new edge[num_nodes*(num_nodes-1)/2];
+
+  // read node/edge data into this->d
+  assert(line == "NODE_COORD_SECTION");
+  if(props["EDGE_WEIGHT_TYPE"] == "EUC_2D"){
+    vector<pair<double, double>> nodes(num_nodes);
+    while(getline(infile, line)){
+      if(line == "EOF") break;
+      istringstream iss(line);
+      int idx;
+      double x, y;
+      iss >> idx >> x >> y;
+
+      nodes[idx-1] = {x,y};
+    }
+
+
+    // populate distance matrix
+    this->d.resize(num_nodes);
+    for(int i = 0; i < num_nodes; i++){
+      this->d[i] = vector<double>(num_nodes);
+      for(int j = 0; j < num_nodes; j++){
+        double dx = nodes[i].first - nodes[j].first;
+        double dy = nodes[i].second - nodes[j].second;
+
+        // per TSPLIB standard, distances are rounded to integers
+        d[i][j] = round(sqrt(dx*dx + dy*dy));
+      }
+    }
+  }
+  init_LP();
+}
 
 TSP_prob::TSP_prob(dmtx d) : d(d) {
   int n = d.size();
@@ -302,10 +358,10 @@ bool TSP_prob::cp_solve(){
     auto [cut, weight] = G.min_cut(2.0 - EPS);
     //auto [cut, weight] = G.min_cut(0);
 #endif
-    printf("weight is %.2f\n", weight);
+    //printf("weight is %.2f\n", weight);
     if(weight >= 2-EPS) break;
     this->add_subtour_constraint(cut);
-    print_wmat();
+    //print_wmat();
   }
 
   // TODO: look for more cutting planes, e.g. comb inequalities

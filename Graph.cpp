@@ -34,7 +34,7 @@ Graph::Graph(int num_nodes, vector<vector<pair<int, double>>> al){
 // TODO: maybe there's a faster way to do this by linking the two "copies" of
 // each edge together somehow? but .erase() is still expensive
 void Graph::merge(int s, int t){
-  printf("Merging %d,%d\n", s, t);
+  //printf("Merging %d,%d\n", s, t);
   assert(s<n && t<n && s != t);
 
   // TODO: static
@@ -57,10 +57,8 @@ void Graph::merge(int s, int t){
         if(i != s) continue;
       }else if(destnode == s){
         found_s = true;
-        printf("foo\n");
         G[srcnode][i].second += tweights[srcnode];
       }else if(srcnode == s){
-        printf("bar\n");
         G[srcnode][i].second += tweights[destnode];
       }
     }
@@ -68,7 +66,6 @@ void Graph::merge(int s, int t){
     // if this node had an edge to t but not s, we need to add a new edge to s
     // with the appropriate weight
     if(srcnode != s && found_t && !found_s){
-      printf("baz\n");
       G[srcnode].push_back({s, tweights[srcnode]});
       G[s].push_back({srcnode, tweights[srcnode]});
     }
@@ -104,12 +101,12 @@ void print_edges(vector<vector<pair<int, double>>> G){
 pair<vector<bool>, double> Graph::min_cut(double lim){
   vector<int> nodes(n);
   for(int i = 0; i < n; i++) nodes[i] = i;
-  print_edges(G);
+  //print_edges(G);
   return min_cut_rec(lim, nodes);
 }
 
 pair<vector<bool>, double> Graph::min_cut_rec(double lim, vector<int> nodes){
-  printf("ns=%ld\n", nodes.size());
+  //printf("ns=%ld\n", nodes.size());
   assert(nodes.size() >= 2);
   // TODO: choose randomly? or via some heuristic?
   vector<int> A = {nodes[0]};
@@ -122,7 +119,7 @@ pair<vector<bool>, double> Graph::min_cut_rec(double lim, vector<int> nodes){
     for(auto [nd, wt] : G[last_addition]){
       scores[nd] += wt;
     }
-    printf("scores: "); print_flist(scores); printf("\n");
+    //printf("scores: "); print_flist(scores); printf("\n");
 
     // TODO: make this more efficient with a heap of some kind
     //int next = std::min_element(scores.begin(), scores.end()) - scores.begin();
@@ -141,24 +138,24 @@ pair<vector<bool>, double> Graph::min_cut_rec(double lim, vector<int> nodes){
   int s = A[A.size() - 2];
   int t = A[A.size() - 1];
   double cut_size = scores[t];
-  printf("A(%.2f) is: ", cut_size); print_vlist(A); printf("\n");
+  //printf("A(%.2f) is: ", cut_size); print_vlist(A); printf("\n");
   if(nodes.size() > 2 && cut_size >= lim){
     merge(s,t);
     std::remove(nodes.begin(), nodes.end(), t);
     nodes.resize(nodes.size()-1);
-    printf("Finished merging\n");
-    print_edges(G);
+    //printf("Finished merging\n");
+    //print_edges(G);
     auto [rec_cut, rec_wt] = min_cut_rec(lim, nodes);
     if(rec_wt < cut_size){
       rec_cut[t] = rec_cut[s];
-      printf("ns=%ld; returning rec cut (", nodes.size()); print_cut(rec_cut); printf("); wt=%f\n", rec_wt);
+      //printf("ns=%ld; returning rec cut (", nodes.size()); print_cut(rec_cut); printf("); wt=%f\n", rec_wt);
       return {rec_cut, rec_wt};
     }
   }
 
   vector<bool> cut(n);
   cut[t] = true;
-  printf("ns=%ld; returning this cut (", nodes.size()); print_cut(cut); printf("); wt=%f\n", cut_size);
+  //printf("ns=%ld; returning this cut (", nodes.size()); print_cut(cut); printf("); wt=%f\n", cut_size);
   return {cut, cut_size};
 }
 

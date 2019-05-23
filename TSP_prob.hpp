@@ -7,6 +7,7 @@
 #include <cassert>
 #include <cstring>
 #include <cmath>
+#include <string>
 
 #ifdef BOOSTCUT
 #include <boost/graph/adjacency_list.hpp>
@@ -27,6 +28,10 @@ class TSP_prob {
   public:
     glp_prob *lp;
 
+    // initialize a TSP instance from a TSPLIB file
+    TSP_prob(string filename);
+
+    TSP_prob() = default;
     TSP_prob(dmtx d);
     TSP_prob(const TSP_prob &other);
     TSP_prob& operator=(TSP_prob&& other);

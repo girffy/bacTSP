@@ -58,31 +58,37 @@ int main (int argc, char *argv[]){
   int n;
   vector<point> points;
   dmtx d;
+  TSP_prob tp;
   if(argc <= 1){
-    printf("Usage: %s <num_cities> | %s file <dmtx>\n", argv[0], argv[0]);
+    printf("Usage: %s <num_cities> | %s file <dmtx_file> | %s tsplib <tsplib_file>\n",
+           argv[0], argv[0], argv[0]);
     exit(1);
   }else if(strcmp(argv[1], "file") == 0){
     assert(argc == 3);
     d = read_dmtx(argv[2]);
+    tp = TSP_prob(d);
+  }else if(strcmp(argv[1], "tsplib") == 0){
+    assert(argc == 3);
+    tp = TSP_prob(argv[2]);
   }else{
     assert(argc == 2);
     n = atoi(argv[1]);
     assert(n > 2);
     vector<point> points = random_points(n);
     d = make_dmtx(points);
+    tp = TSP_prob(d);
   }
 
-  TSP_prob tp(d);
   tp.solve();
-  tp.print_wmat();
+  //tp.print_wmat();
   tour t = tp.get_tour();
-  printf("Optimal tour:\n\n");
+  printf("Optimal tour:");
   for(int i = 0; i < (int)t.size(); i++){
     if(points.size() == 0){
-      printf("%d\n", t[i]);
+      printf("%d ", t[i]);
     }else{
-      printf("%d\t(%f,%f)\n", t[i], points[t[i]].first, points[t[i]].second);
+      printf("%d\t(%f,%f) ", t[i], points[t[i]].first, points[t[i]].second);
     }
   }
-  printf("tour length: %f\n", glp_get_obj_val(tp.lp));
+  printf("\ntour length: %f\n", glp_get_obj_val(tp.lp));
 }

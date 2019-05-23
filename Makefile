@@ -11,8 +11,15 @@ clean:
 	rm a.out
 
 # # We need a test script
-# make debug CFLAGS= && mv a.out debug_b2cut
-# make debug CFLAGS=-DBOOSTCUT && mv a.out debug_boostcut
-# make release CFLAGS= && mv a.out release_b2cut
-# make release CFLAGS=-DBOOSTCUT && mv a.out release_boostcut
-# for i in debug_b* release_b* ; do echo $i ; time ./$i 50 >/dev/null ; echo "" ; done
+bench:
+	# just believe me when i say printf makes things rly rly slow
+	# make debug   CFLAGS="-o debug_b2cut"
+	# make debug   CFLAGS="-o debug_boostcut -DBOOSTCUT"
+	make release CFLAGS="-o release_b2cut"
+	make release CFLAGS="-o release_boostcut -DBOOSTCUT"
+
+runbench:
+	for i in release_b* ; do echo $$i ; time ./$$i 50 >/dev/null ; echo ; done
+
+cleanbench:
+	rm release_b2cut release_boostcut
